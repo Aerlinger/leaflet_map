@@ -1,0 +1,152 @@
+
+
+<style>
+    tr.hours_of_day th {
+        text-align: center;
+    }
+
+
+</style>
+
+<script type="application/javascript">
+    $(document).ready(function(event) {
+
+        var days_of_week = ['sunday',
+            'monday',
+            'tuesday',
+            'wednesday',
+            'thursday',
+            'friday',
+            'saturday'];
+        var hours_of_day = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
+
+        function capitaliseFirstLetter(string) {
+            return string.charAt(0).toUpperCase() + string.slice(1);
+        }
+
+        window.changed_elements = [];
+
+        /**
+         * Converts a (0-1) float to a shade of red where a value of 1 is 100% red (#F00)
+         * */
+        function float2color( percentage ) {
+            var color_part_dec = 255 * (1.0- parseFloat(percentage));
+            var color_part_hex = Number(parseInt(color_part_dec, 10)).toString(16);
+
+            var prefix = (color_part_dec >= 16) ? "#FF" : "#F"
+
+            return prefix + color_part_hex + color_part_hex;
+        }
+
+        function group_by(y) {
+            var x = {};
+
+            for (var i = 0; i < y.length; ++i) {
+                var obj = y[i];
+
+                if (x[obj.day_of_week] == undefined)
+                    x[obj.day_of_week] = [obj.day_of_week];
+
+                x[obj.day_of_week].push({hour_of_day: obj.hour_of_day, threshold: obj.threshold});
+            }
+
+            console.log(x);
+        }
+
+        function create_row(hour_of_day) {
+            return '<tr class="hour_of_day_'+ hour_of_day + '"><td style="padding-right: 10px;"><strong>' +
+                    hour_of_day + ":00" +
+                    '</strong></td></tr>';
+        }
+
+        /**
+         * Defines the HTML single cell of the threshold grid
+         * */
+        function threshold_cell(day_of_week, hour_of_day, threshold) {
+            var val = (new Number(threshold)).toPrecision(2);
+
+            return "<td > \
+                        <input  type='text' \
+                                size='7' \
+                                maxlength='4' \
+                                value='" + val + "'; \
+                                data-day_of_week='" + day_of_week + "'; \
+                                data-hour_of_day='" + hour_of_day + "'; \
+                                style='align: center; \
+                                background-color: " + float2color(val) + " !important;\
+                                text-align: center; \
+                                font-weight: bold; \
+                                font-size: 1.0em'> \
+                    </td>";
+        }
+
+        /**
+         * Iterates through day of the week
+         * */
+        function build_table() {
+            for (var i=0; i<hours_of_day.length; ++i) {
+                hour_of_day_row = create_row(hours_of_day[i]);
+
+                $('#threshold_block').append(hour_of_day_row);
+
+                for (var j=0; j<days_of_week.length; ++j) {
+                    $('#threshold_block tr:last').append(threshold_cell(days_of_week[j], hours_of_day[i], Math.random()));
+                }
+            }
+
+            $('table input').change(function(evt) {
+                $(this).css("background-color", float2color( $(this).val() ));
+
+                $(this).css("color", "rgb(0, 173, 255)");
+                $(this).css("font-weight", 'bold');
+                $(this).css("border-color", "blue");
+
+                window.changed_elements.push(evt.target);
+            });
+        }
+
+        function bind_events() {
+            $("#set_all").click(function(event) {
+                alert($("#reset_value").val());
+            });
+
+            $('td input').bind("blur", function(evt) {
+                $("tr.hour_of_day_"+hod+"").css('background-color', 'white');
+                $("#day_of_week_"+day_of_week+"").css('background-color', 'white');
+            });
+
+            $('td input').bind("focus", function(evt) {
+                hod = $(evt.target).data('hour_of_day');
+                day_of_week = $(evt.target).data('day_of_week');
+
+                $("tr.hour_of_day_"+hod+"").css('background-color', 'red');
+                $("#day_of_week_"+day_of_week+"").css('background-color', 'red');
+            });
+
+            $('#apply').click(function(event) {
+                var threshold_matrix = window.changed_elements.map(function(item) {
+                    day_and_hour_of_week = $(item).data();
+                    threshold_by_day_and_hour_of_week = $.extend(day_and_hour_of_week, {threshold: $(item).val()});
+
+                    return day_and_hour_of_week;
+                });
+
+                $.post("/test", {
+                    region: "New York",
+                    service: "Home Cleaning",
+                    max_threshold: "Home Cleaning",
+                    multiplier: 10,
+                    thresholds: threshold_matrix
+                }).done(function(res) {
+                    console.log(res);
+                });
+            });
+        }
+
+        build_table();
+        bind_events();
+    });
+</script>
+
+
+
